@@ -1,0 +1,16 @@
+[Unit]
+Description=A milter service for bogofilter email classification
+After=network.target auditd.service
+
+[Service]
+User=postfix
+Group=postfix
+WorkingDirectory=/var/cache/filter
+ExecStart=/usr/local/bin/bogomilter \
+	--proto unix \
+	--addr /var/spool/postfix/milters/bogo.sock
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

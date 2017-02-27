@@ -1,0 +1,16 @@
+[Unit]
+Description=A milter service for blacklisting attachments with executable files
+After=network.target auditd.service
+
+[Service]
+User=postfix
+Group=postfix
+WorkingDirectory=/var/lib/postfix
+ExecStart=/usr/local/bin/extmilter \
+	--proto unix \
+	--addr /var/spool/postfix/milters/ext.sock
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
