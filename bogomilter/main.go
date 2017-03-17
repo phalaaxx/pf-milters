@@ -108,7 +108,7 @@ func (b *BogoMilter) Body(m *milter.Modifier) (milter.Response, error) {
 	// add X-Bogosity header
 	header := string(output)
 	if strings.HasPrefix(header, "X-Bogosity") {
-		if m.AddHeader("X-Bogosity", header[12:]); err != nil {
+		if m.AddHeader("X-Bogosity", header[12:len(header)-1]); err != nil {
 			return nil, err
 		}
 	}
