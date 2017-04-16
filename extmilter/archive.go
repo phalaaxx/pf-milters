@@ -48,7 +48,7 @@ func AllowZipPayload(r *strings.Reader) error {
 			return EPayloadNotAllowed
 		}
 		// check archive within another achive
-		if  SupportedArchive(f.Name) {
+		if SupportedArchive(f.Name) {
 			payload, err := f.Open()
 			if err != nil {
 				// silently ignore errors
