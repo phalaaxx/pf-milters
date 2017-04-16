@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-/* AllowRarPayload inspecs a rar attachment in email message and
+/* AllowRarPayload inspects a rar attachment in email message and
    returns true if no filenames have a blacklisted extension */
 func AllowRarPayload(r *strings.Reader) (bool, error) {
 	// make rar file reader object
@@ -29,6 +29,6 @@ func AllowRarPayload(r *strings.Reader) (bool, error) {
 			return false, nil
 		}
 	}
-	// no b lacklisted file, allow
+	// no blacklisted file, allow
 	return true, nil
 }

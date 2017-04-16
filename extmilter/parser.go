@@ -90,9 +90,9 @@ func ParseEmailMessage(r io.Reader) (bool, error) {
 			AllowPayloadFunc = AllowZipPayload
 		case ".rar":
 			AllowPayloadFunc = AllowRarPayload
-			//case ".tar"
-			//case ".tar.gz"
-			//case ".tar.bz2"
+		//case ".tar":
+		//case ".tar.gz":
+		//case ".tar.bz2":
 		}
 		if AllowPayloadFunc != nil {
 			// read zip file contents
@@ -110,7 +110,7 @@ func ParseEmailMessage(r io.Reader) (bool, error) {
 			if allow, err := AllowPayloadFunc(reader); err != nil {
 				return false, err
 			} else if !allow {
-				// return custom response message
+				// do not allow this message through
 				return false, nil
 			}
 		}
