@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -19,6 +20,9 @@ var ExtensionBlacklist = []string{
 	".shm", ".shs", ".vbe", ".vbs", ".vbx", ".vxd", ".wsf", ".wsh", ".xl",
 }
 
+// EPayloadNotAllowed is an error that disallows message to pass
+var EPayloadNotAllowed = errors.New("552 Message blocked due to blacklisted attachment")
+
 /* AllowFilename returns true if the filename specified does not
    have one of the blacklisted extensions, false otherwise */
 func AllowFilename(FileExt string) bool {
@@ -31,20 +35,20 @@ func AllowFilename(FileExt string) bool {
 }
 
 // ParseMessage processes an email message parts
-func ParseEmailMessage(r io.Reader) (bool, error) {
+func ParseEmailMessage(r io.Reader) error {
 	// get message from input stream
 	msg, err := mail.ReadMessage(r)
 	if err != nil {
-		return false, err
+		return err
 	}
 	// get media type from email message
 	media, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
-		return false, err
+		return err
 	}
 	// accept messages without attachments
 	if !strings.HasPrefix(media, "multipart/") {
-		return true, nil
+		return nil
 	}
 	// deep inspect multipart messages
 	mr := multipart.NewReader(msg.Body, params["boundary"])
@@ -55,15 +59,13 @@ func ParseEmailMessage(r io.Reader) (bool, error) {
 			if err == io.EOF {
 				break
 			}
-			return false, err
+			return err
 		}
 		// check if part contains a submessage
 		if strings.HasPrefix(part.Header.Get("Content-Type"), "message/") {
 			// recursively process submessage
-			if accept, err := ParseEmailMessage(part); err != nil {
-				return false, err
-			} else if !accept {
-				return false, nil
+			if err := ParseEmailMessage(part); err != nil {
+				return err
 			}
 		}
 		// do not process non-attachment parts
@@ -73,17 +75,17 @@ func ParseEmailMessage(r io.Reader) (bool, error) {
 		// decode filename
 		FileName, err := StringDecode(part.FileName())
 		if err != nil {
-			return false, err
+			return err
 		}
 		// get file extension
 		FileExt := filepath.Ext(strings.ToLower(FileName))
 		// check if attachment is blacklisted
 		if !AllowFilename(FileExt) {
 			// return custom response message
-			return false, nil
+			return EPayloadNotAllowed
 		}
 		// define a playload function pointer
-		var AllowPayloadFunc func(*strings.Reader) (bool, error)
+		var AllowPayloadFunc func(*strings.Reader) error
 		// deep inspect archive files
 		switch FileExt {
 		case ".zip":
@@ -98,23 +100,20 @@ func ParseEmailMessage(r io.Reader) (bool, error) {
 			// read zip file contents
 			slurp, err := ioutil.ReadAll(part)
 			if err != nil {
-				return false, err
+				return err
 			}
 			// decode base64 contents
 			decoded, err := base64.StdEncoding.DecodeString(string(slurp))
 			if err != nil {
-				return false, err
+				return err
 			}
 			reader := strings.NewReader(string(decoded))
 			// examine payload for blacklisted contents
-			if allow, err := AllowPayloadFunc(reader); err != nil {
-				return false, err
-			} else if !allow {
-				// do not allow this message through
-				return false, nil
+			if err := AllowPayloadFunc(reader); err != nil {
+				return err
 			}
 		}
 	}
 	// accept message by default
-	return true, nil
+	return nil
 }

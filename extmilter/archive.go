@@ -10,30 +10,30 @@ import (
 
 /* AllowZipPayload inspecs a zip attachment in email message and
    returns true if no filenames have a blacklisted extension */
-func AllowZipPayload(r *strings.Reader) (bool, error) {
+func AllowZipPayload(r *strings.Reader) error {
 	reader, err := zip.NewReader(r, int64(r.Len()))
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	// range over filenames in zip archive
 	for _, f := range reader.File {
 		FileExt := filepath.Ext(strings.ToLower(f.Name))
 		if !AllowFilename(FileExt) {
-			return false, nil
+			return EPayloadNotAllowed
 		}
 	}
 
-	return true, nil
+	return nil
 }
 
 /* AllowRarPayload inspects a rar attachment in email message and
    returns true if no filenames have a blacklisted extension */
-func AllowRarPayload(r *strings.Reader) (bool, error) {
+func AllowRarPayload(r *strings.Reader) error {
 	// make rar file reader object
 	rr, err := rardecode.NewReader(r, "")
 	if err != nil {
-		return false, err
+		return err
 	}
 	// walk files in archive
 	for {
@@ -41,14 +41,14 @@ func AllowRarPayload(r *strings.Reader) (bool, error) {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return false, err
+			return err
 		}
 		// compare current name against blacklisted extensions
 		FileExt := filepath.Ext(strings.ToLower(header.Name))
 		if !AllowFilename(FileExt) {
-			return false, nil
+			return EPayloadNotAllowed
 		}
 	}
 	// no blacklisted file, allow
-	return true, nil
+	return nil
 }

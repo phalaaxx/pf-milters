@@ -12,9 +12,6 @@ import (
 	"strings"
 )
 
-/* MsgAttachmentBlock is a pre-defined error message for blocked file attachments */
-const MsgAttachmentBlock = "552 Message blocked due to blacklisted attachment"
-
 /* ExtMilter object */
 type ExtMilter struct {
 	milter.Milter
@@ -68,11 +65,12 @@ func (e *ExtMilter) Body(m *milter.Modifier) (milter.Response, error) {
 	// prepare buffer
 	buffer := bytes.NewReader(e.message.Bytes())
 	// parse email message and get accept flag
-	if accept, err := ParseEmailMessage(buffer); err != nil {
+	if err := ParseEmailMessage(buffer); err != nil {
+		if err == EPayloadNotAllowed {
+			// return custom response message
+			return milter.NewResponse('y', []byte(err.Error())), nil
+		}
 		return nil, err
-	} else if !accept {
-		// return custom response message
-		return milter.NewResponse('y', []byte(MsgAttachmentBlock)), nil
 	}
 	// accept message by default
 	return milter.RespAccept, nil
