@@ -68,7 +68,7 @@ func (e *ExtMilter) Body(m *milter.Modifier) (milter.Response, error) {
 	if err := ParseEmailMessage(buffer); err != nil {
 		if err == EPayloadNotAllowed {
 			// return custom response message
-			return milter.NewResponse('y', []byte(err.Error())), nil
+			return milter.NewResponseStr('y', err.Error()), nil
 		}
 		return nil, err
 	}
