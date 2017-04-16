@@ -120,8 +120,8 @@ func RunServer(socket net.Listener) {
 	// declare milter init function
 	init := func() (milter.Milter, uint32, uint32) {
 		return &BogoMilter{},
-			milter.AddHeader | milter.ChangeHeader,
-			milter.NoConnect | milter.NoHelo | milter.NoMailFrom | milter.NoRcptTo
+			milter.OptAddHeader | milter.OptChangeHeader,
+			milter.OptNoConnect | milter.OptNoHelo | milter.OptNoMailFrom | milter.OptNoRcptTo
 	}
 	// start server
 	if err := milter.RunServer(socket, init); err != nil {
