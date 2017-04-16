@@ -56,8 +56,6 @@ func AllowZipPayload(r *strings.Reader) error {
 			}
 			// read sub-payload
 			slurp, err := ioutil.ReadAll(payload)
-			// get file extension
-			FileExt := filepath.Ext(strings.ToLower(f.Name))
 			// check if sub-payload contains any blacklisted files
 			if err := AllowPayload(FileExt, strings.NewReader(string(slurp))); err != nil {
 				// error, return immediately
@@ -97,8 +95,6 @@ func AllowRarPayload(r *strings.Reader) error {
 				// silently ignore errors
 				continue
 			}
-			// get file extension
-			FileExt := filepath.Ext(strings.ToLower(header.Name))
 			// check if sub-payload contains any blacklisted files
 			if err := AllowPayload(FileExt, strings.NewReader(string(slurp))); err != nil {
 				// error, return immediately
