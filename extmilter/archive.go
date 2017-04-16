@@ -8,6 +8,31 @@ import (
 	"strings"
 )
 
+/* SupportedArchive returns true if file name
+   represents a supported archive file type */
+func SupportedArchive(name string) bool {
+	ExtList := []string{"zip", "rar"}
+	nameLower := strings.ToLower(name)
+	for _, ext := range ExtList {
+		if strings.HasSuffix(nameLower, ext) {
+			return true
+		}
+	}
+	return false
+}
+
+/* AllowPayload runs the appropriate decompress
+   function according to provided extension */
+func AllowPayload(ext string, r *strings.Reader) error {
+	switch ext {
+	case ".zip":
+		return AllowZipPayload(r)
+	case ".rar":
+		return AllowRarPayload(r)
+	}
+	return nil
+}
+
 /* AllowZipPayload inspecs a zip attachment in email message and
    returns true if no filenames have a blacklisted extension */
 func AllowZipPayload(r *strings.Reader) error {

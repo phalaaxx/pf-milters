@@ -84,19 +84,8 @@ func ParseEmailMessage(r io.Reader) error {
 			// return custom response message
 			return EPayloadNotAllowed
 		}
-		// define a playload function pointer
-		var AllowPayloadFunc func(*strings.Reader) error
-		// deep inspect archive files
-		switch FileExt {
-		case ".zip":
-			AllowPayloadFunc = AllowZipPayload
-		case ".rar":
-			AllowPayloadFunc = AllowRarPayload
-		//case ".tar":
-		//case ".tar.gz":
-		//case ".tar.bz2":
-		}
-		if AllowPayloadFunc != nil {
+		// check archived payload contents
+		if SupportedArchive(FileName) {
 			// read zip file contents
 			slurp, err := ioutil.ReadAll(part)
 			if err != nil {
@@ -109,7 +98,7 @@ func ParseEmailMessage(r io.Reader) error {
 			}
 			reader := strings.NewReader(string(decoded))
 			// examine payload for blacklisted contents
-			if err := AllowPayloadFunc(reader); err != nil {
+			if err := AllowPayload(FileExt, reader); err != nil {
 				return err
 			}
 		}
