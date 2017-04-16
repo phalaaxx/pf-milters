@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"github.com/nwaples/rardecode"
 	"io"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 )
@@ -40,12 +41,28 @@ func AllowZipPayload(r *strings.Reader) error {
 	if err != nil {
 		return err
 	}
-
 	// range over filenames in zip archive
 	for _, f := range reader.File {
 		FileExt := filepath.Ext(strings.ToLower(f.Name))
 		if !AllowFilename(FileExt) {
 			return EPayloadNotAllowed
+		}
+		// check archive within another achive
+		if  SupportedArchive(f.Name) {
+			payload, err := f.Open()
+			if err != nil {
+				// silently ignore errors
+				continue
+			}
+			// read sub-payload
+			slurp, err := ioutil.ReadAll(payload)
+			// get file extension
+			FileExt := filepath.Ext(strings.ToLower(f.Name))
+			// check if sub-payload contains any blacklisted files
+			if err := AllowPayload(FileExt, strings.NewReader(string(slurp))); err != nil {
+				// error, return immediately
+				return err
+			}
 		}
 	}
 
@@ -72,6 +89,21 @@ func AllowRarPayload(r *strings.Reader) error {
 		FileExt := filepath.Ext(strings.ToLower(header.Name))
 		if !AllowFilename(FileExt) {
 			return EPayloadNotAllowed
+		}
+		// check archive within another achive
+		if SupportedArchive(header.Name) {
+			slurp, err := ioutil.ReadAll(rr)
+			if err != nil {
+				// silently ignore errors
+				continue
+			}
+			// get file extension
+			FileExt := filepath.Ext(strings.ToLower(header.Name))
+			// check if sub-payload contains any blacklisted files
+			if err := AllowPayload(FileExt, strings.NewReader(string(slurp))); err != nil {
+				// error, return immediately
+				return err
+			}
 		}
 	}
 	// no blacklisted file, allow
