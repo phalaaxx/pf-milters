@@ -19,6 +19,7 @@ import (
 /* global variables */
 var BogoBin string
 var BogoDir string
+var LocalHold bool
 
 /* BogoMilter object */
 type BogoMilter struct {
@@ -111,6 +112,13 @@ func (b *BogoMilter) Body(m *milter.Modifier) (milter.Response, error) {
 		if m.AddHeader("X-Bogosity", header[12:len(header)-1]); err != nil {
 			return nil, err
 		}
+		// put locally originating spam into quarantine
+		if LocalHold && len(m.Headers.Get("Received")) == 0 {
+			if strings.HasPrefix(header, "X-Bogosity: Spam") {
+				m.Quarantine("local spam")
+				// TODO: notify administrator
+			}
+		}
 	}
 	return milter.RespAccept, nil
 }
@@ -149,6 +157,10 @@ func main() {
 		"db",
 		"/var/cache/filter",
 		"Path to bogofilter database")
+	flag.BoolVar(&LocalHold,
+		"localhold",
+		false,
+		"Put outgoing spam into quarantine")
 	flag.Parse()
 
 	// make sure the specified protocol is either unix or tcp
