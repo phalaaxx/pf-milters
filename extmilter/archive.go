@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"github.com/nwaples/rardecode"
 	"io"
@@ -12,7 +13,7 @@ import (
 /* SupportedArchive returns true if file name
    represents a supported archive file type */
 func SupportedArchive(name string) bool {
-	ExtList := []string{"zip", "rar"}
+	ExtList := []string{"tar", "zip", "rar"}
 	nameLower := strings.ToLower(name)
 	for _, ext := range ExtList {
 		if strings.HasSuffix(nameLower, ext) {
@@ -26,6 +27,8 @@ func SupportedArchive(name string) bool {
    function according to provided extension */
 func AllowPayload(ext string, r *strings.Reader) error {
 	switch ext {
+	case ".tar":
+		return AllowTarPayload(r)
 	case ".zip":
 		return AllowZipPayload(r)
 	case ".rar":
@@ -34,7 +37,42 @@ func AllowPayload(ext string, r *strings.Reader) error {
 	return nil
 }
 
-/* AllowZipPayload inspecs a zip attachment in email message and
+/* AllowTarPayload inspects a tar attachment in email message and
+   returns true if no filenames have a blacklisted extension */
+func AllowTarPayload(r *strings.Reader) error {
+	// range over tar files
+	reader := tar.NewReader(r)
+	for {
+		// get next file in archive
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		// check for blacklisted file name
+		FileExt := filepath.Ext(strings.ToLower(header.Name))
+		if !AllowFilename(FileExt) {
+			return EPayloadNotAllowed
+		}
+		// check for nested archives
+		if SupportedArchive(header.Name) {
+			slurp, err := ioutil.ReadAll(reader)
+			if err != nil {
+				// silently ignore errors
+				continue
+			}
+			// check if sub-payload contains any blacklisted files
+			if err := AllowPayload(FileExt, strings.NewReader(string(slurp))); err != nil {
+				// error, return immediately
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+/* AllowZipPayload inspects a zip attachment in email message and
    returns true if no filenames have a blacklisted extension */
 func AllowZipPayload(r *strings.Reader) error {
 	reader, err := zip.NewReader(r, int64(r.Len()))
