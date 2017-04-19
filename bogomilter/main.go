@@ -24,6 +24,7 @@ var LocalHold bool
 /* BogoMilter object */
 type BogoMilter struct {
 	milter.Milter
+	from   string
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
@@ -36,6 +37,13 @@ func (b BogoMilter) Header(name, value string, m *milter.Modifier) (milter.Respo
 		// X-Bogosity header is present, accept immediately
 		return milter.RespAccept, nil
 	}
+	return milter.RespContinue, nil
+}
+
+/* MailFrom is called on envelope from address */
+func (b *BogoMilter) MailFrom(from string, m *milter.Modifier) (milter.Response, error) {
+	// save from address for later reference
+	b.from = from
 	return milter.RespContinue, nil
 }
 
@@ -112,9 +120,14 @@ func (b *BogoMilter) Body(m *milter.Modifier) (milter.Response, error) {
 		if m.AddHeader("X-Bogosity", header[12:len(header)-1]); err != nil {
 			return nil, err
 		}
+		// log spam senders
+		if strings.HasPrefix(header, "X-Bogosity: Spam") {
+			fmt.Print("detected spam from %s\n", b.from)
+		}
 		// put locally originating spam into quarantine
 		if LocalHold && len(m.Headers.Get("Received")) == 0 {
 			if strings.HasPrefix(header, "X-Bogosity: Spam") {
+				fmt.Printf("quarantine mail from %s\n", b.from)
 				m.Quarantine("local spam")
 				// TODO: notify administrator
 			}
@@ -129,7 +142,7 @@ func RunServer(socket net.Listener) {
 	init := func() (milter.Milter, uint32, uint32) {
 		return &BogoMilter{},
 			milter.OptAddHeader | milter.OptChangeHeader,
-			milter.OptNoConnect | milter.OptNoHelo | milter.OptNoMailFrom | milter.OptNoRcptTo
+			milter.OptNoConnect | milter.OptNoHelo | milter.OptNoRcptTo
 	}
 	// start server
 	if err := milter.RunServer(socket, init); err != nil {
