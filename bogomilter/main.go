@@ -122,7 +122,7 @@ func (b *BogoMilter) Body(m *milter.Modifier) (milter.Response, error) {
 		}
 		// log spam senders
 		if strings.HasPrefix(header, "X-Bogosity: Spam") {
-			fmt.Print("detected spam from %s\n", b.from)
+			fmt.Printf("detected spam from %s\n", b.from)
 		}
 		// put locally originating spam into quarantine
 		if LocalHold && len(m.Headers.Get("Received")) == 0 {
